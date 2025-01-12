@@ -1,0 +1,33 @@
+{
+    "name": "simple-logmate",
+    "version": "1.0.0",
+    "description": "A flexible and powerful logging utility for Node.js applications.",
+    "main": "index.js",
+    "scripts": {
+        "test": "node examples/example.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/abu-tahir-0/simple-logmate.git"
+    },
+    "keywords": [
+        "logger",
+        "logging",
+        "nodejs",
+        "logmate",
+        "logmate-logger",
+        "logmate-logger-library",
+        "log",
+        "file",
+        "console",
+        "nodejs-logger",
+        "nodejs-logger-library"
+    ],
+    "author": "Abu Tahir",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/abu-tahir-0/simple-logmate/issues"
+    },
+    "homepage": "https://github.com/abu-tahir-0/simple-logmate#readme",
+    "dependencies": {}
+}
