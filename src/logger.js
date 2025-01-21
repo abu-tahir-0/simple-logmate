@@ -67,12 +67,31 @@ class Logger {
     /**
      * Core logging function that handles message formatting and transport routing
      * @param {string} level - Log level (debug, info, warn, error)
-     * @param {string} message - Log message content
+     * @param {string|Error} message - Log message content or Error object
      */
-    log(level, message) {
+    log(level, ...args) {
         if (this.shouldLog(level)) {
             const timestamp = this.getLocalTimestamp();
-            const formattedMessage = format(this.format, { timestamp, level, message });
+            let formattedMessage;
+
+            // Process all arguments to create a complete message
+            const processedMessage = args.map(arg => {
+                if (arg instanceof Error) {
+                    const errorDetails = {
+                        name: arg.name,
+                        message: arg.message,
+                        stack: arg.stack
+                    };
+                    return `${errorDetails.name}: ${errorDetails.message}\n${errorDetails.stack}`;
+                }
+                return String(arg);
+            }).join(' ');
+
+            formattedMessage = format(this.format, {
+                timestamp,
+                level,
+                message: processedMessage
+            });
 
             // Route message to each enabled transport
             this.transports.forEach(transport => {
@@ -80,7 +99,17 @@ class Logger {
                     // Use appropriate console method based on level with colors
                     const consoleMethod = level === 'error' ? 'error' :
                         level === 'warn' ? 'warn' : 'log';
+
+                    // Log the formatted message first
                     console[consoleMethod](colors[level] + formattedMessage + colors.reset);
+
+                    // If there are any error objects, log them separately to preserve stack traces
+                    args.forEach(arg => {
+                        if (arg instanceof Error) {
+                            console[consoleMethod](colors[level] + 'Stack trace:' + colors.reset);
+                            console[consoleMethod](arg);
+                        }
+                    });
                 } else if (transport === 'file' && this.filePath) {
                     this.logToFile(formattedMessage);
                 }
@@ -146,10 +175,10 @@ class Logger {
     }
 
     // Convenience methods for different log levels
-    info(message) { this.log('info', message); }
-    warn(message) { this.log('warn', message); }
-    error(message) { this.log('error', message); }
-    debug(message) { this.log('debug', message); }
+    info(...args) { this.log('info', ...args); }
+    warn(...args) { this.log('warn', ...args); }
+    error(...args) { this.log('error', ...args); }
+    debug(...args) { this.log('debug', ...args); }
 }
 
 module.exports = Logger;

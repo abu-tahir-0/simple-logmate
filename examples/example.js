@@ -45,5 +45,41 @@ async function testLogRotation() {
     }
 }
 
-// Execute the test function and handle any errors
-testLogRotation().catch(console.error);
+/**
+ * Test function to verify error logging functionality
+ * Tests different error scenarios and ensures proper logging
+ */
+async function testErrorLogging() {
+    try {
+        // Test basic error message
+        logger.error('Basic error message');
+
+        // Test error object logging
+        const error = new Error('Test error object');
+        logger.error('Error with object:', error);
+
+        // Test error with stack trace
+        try {
+            throw new Error('Test error with stack');
+        } catch (e) {
+            logger.error('Caught error with stack:', e);
+        }
+
+        // Test error with custom properties
+        const customError = new Error('Custom error');
+        customError.code = 'CUSTOM_ERROR';
+        customError.details = { userId: 123, action: 'test' };
+        logger.error('Custom error object:', customError);
+
+        // Add delay between logs for readability
+        await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (err) {
+        console.error('Error during error logging test:', err);
+    }
+}
+
+// Execute both test functions
+Promise.all([
+    testLogRotation(),
+    testErrorLogging()
+]).catch(console.error);
