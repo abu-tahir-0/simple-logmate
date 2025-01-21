@@ -2,6 +2,15 @@ const fs = require('fs');
 const path = require('path');
 const { format } = require('./utils');
 
+// ANSI color codes for different log levels
+const colors = {
+    debug: '\x1b[36m', // Cyan
+    info: '\x1b[32m',  // Green
+    warn: '\x1b[33m',  // Yellow
+    error: '\x1b[31m', // Red
+    reset: '\x1b[0m'   // Reset color
+};
+
 /**
  * Logger class providing flexible logging functionality with multiple transports
  * and log rotation capabilities.
@@ -68,10 +77,10 @@ class Logger {
             // Route message to each enabled transport
             this.transports.forEach(transport => {
                 if (transport === 'console') {
-                    // Use appropriate console method based on level
+                    // Use appropriate console method based on level with colors
                     const consoleMethod = level === 'error' ? 'error' :
                         level === 'warn' ? 'warn' : 'log';
-                    console[consoleMethod](formattedMessage);
+                    console[consoleMethod](colors[level] + formattedMessage + colors.reset);
                 } else if (transport === 'file' && this.filePath) {
                     this.logToFile(formattedMessage);
                 }
