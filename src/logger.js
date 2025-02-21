@@ -24,6 +24,7 @@ class Logger {
      * @param {string} [options.filePath=null] - Path to log file
      * @param {number} [options.maxFileSize=1048576] - Max file size in bytes before rotation
      * @param {string[]} [options.transports=['console']] - Enabled transport types
+     * @param {boolean} [options.httpRequest=false] - Enable automatic HTTP request logging
      */
     constructor(options = {}) {
         // Initialize configuration with defaults
@@ -32,6 +33,7 @@ class Logger {
         this.filePath = options.filePath || null;
         this.maxFileSize = options.maxFileSize || 1024 * 1024; // 1MB default
         this.transports = options.transports || ['console'];
+        this.httpRequest = options.httpRequest || false;
 
         // Queue for managing asynchronous file writes
         this.logQueue = [];
@@ -42,6 +44,38 @@ class Logger {
             const dir = path.dirname(this.filePath);
             if (!fs.existsSync(dir)) {
                 fs.mkdirSync(dir, { recursive: true });
+            }
+        }
+
+        // Set up automatic HTTP request logging if enabled
+        if (this.httpRequest) {
+            this.setupAutoRequestLogging();
+        }
+    }
+
+    /**
+     * Sets up automatic HTTP request logging middleware
+     * @private
+     */
+    setupAutoRequestLogging() {
+        if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'test') {
+            try {
+                const http = require('http');
+                const originalCreateServer = http.createServer;
+
+                http.createServer = (...args) => {
+                    const server = originalCreateServer.apply(http, args);
+                    server.on('request', (req, res) => {
+                        const start = Date.now();
+                        res.on('finish', () => {
+                            const responseTime = Date.now() - start;
+                            this.logRequest(req, res, responseTime);
+                        });
+                    });
+                    return server;
+                };
+            } catch (error) {
+                this.warn('Failed to setup automatic HTTP request logging:', error);
             }
         }
     }
@@ -172,6 +206,29 @@ class Logger {
     shouldLog(level) {
         const levels = ['debug', 'info', 'warn', 'error'];
         return levels.indexOf(level) >= levels.indexOf(this.level);
+    }
+
+    /**
+     * Logs HTTP request details
+     * @param {Object} req - Request object
+     * @param {Object} res - Response object
+     * @param {number} responseTime - Response time in milliseconds
+     */
+    logRequest(req, res, responseTime) {
+        const requestLog = {
+            method: req.method,
+            url: req.url,
+            status: res.statusCode,
+            responseTime: `${responseTime}ms`,
+            userAgent: req.headers['user-agent'],
+            ip: req.ip || req.connection.remoteAddress
+        };
+
+        const message = `${requestLog.method} ${requestLog.url} ${requestLog.status} ${requestLog.responseTime}`;
+        this.info(message);
+
+        // Log detailed request info at debug level
+        this.debug('Request Details:', JSON.stringify(requestLog, null, 2));
     }
 
     // Convenience methods for different log levels

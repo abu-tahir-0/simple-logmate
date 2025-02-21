@@ -1,6 +1,6 @@
 # Simple Logmate 
 
-A flexible and powerful logging utility for Node.js applications with support for multiple transports, log rotation, and custom formatting.
+A flexible and powerful logging utility for Node.js applications with support for multiple transports, log rotation, custom formatting, and HTTP request logging.
 
 ## Features
 
@@ -10,6 +10,7 @@ A flexible and powerful logging utility for Node.js applications with support fo
 - **File Logging with Rotation**: Automatic log file rotation based on file size
 - **Multiple Transport Support**: Log to different destinations (console, file) simultaneously
 - **Asynchronous File Writing**: Non-blocking logging operations for better performance
+- **HTTP Request Logging**: Built-in support for logging HTTP requests with detailed information
 - **Zero Dependencies**: Lightweight and self-contained
 
 ## Installation
@@ -24,20 +25,24 @@ yarn add simple-logmate
 ```javascript
 const Logger = require('simple-logmate');
 
-// Create a new logger instance
+// Create a new logger instance with HTTP request logging enabled
 const logger = new Logger({
     level: 'debug',
     format: '[{timestamp}] [{level}] {message}',
     filePath: './logs/app.log',
     maxFileSize: 1024 * 1024, // 1MB
-    transports: ['console', 'file']
+    transports: ['console', 'file'],
+    httpRequest: true  // Enable HTTP request logging
 });
 
-// Start logging!
+// Basic logging
 logger.info('Application started');
 logger.debug('Debug information');
 logger.warn('Warning message');
 logger.error('Error occurred', new Error('Something went wrong'));
+
+// HTTP Request logging will be automatic if httpRequest is true
+app.use((req, res, next) => next());
 ```
 
 ## Configuration Options
@@ -49,8 +54,69 @@ logger.error('Error occurred', new Error('Something went wrong'));
 | `filePath` | string | - | Path to log file (required for file transport) |
 | `maxFileSize` | number | `1048576` (1MB) | Maximum size of log file before rotation |
 | `transports` | string[] | `['console']` | Array of transport types (`'console'`, `'file'`) |
+| `httpRequest` | boolean | `false` | Enable automatic HTTP request logging |
 
 ## Advanced Usage
+
+### HTTP Request Logging
+
+The logger includes built-in support for HTTP request logging. There are two ways to use it:
+
+1. **Automatic Mode** (Recommended):
+```javascript
+const express = require('express');
+const Logger = require('simple-logmate');
+
+const app = express();
+const logger = new Logger({
+    level: 'debug',
+    transports: ['console', 'file'],
+    filePath: './logs/access.log',
+    httpRequest: true  // Enable automatic HTTP request logging
+});
+
+// No additional middleware needed - logging happens automatically
+app.use(express.json());
+app.get('/api/users', (req, res) => {
+    res.json({ users: [] });
+});
+```
+
+2. **Manual Mode**:
+```javascript
+const logger = new Logger({
+    level: 'debug',
+    transports: ['console', 'file'],
+    filePath: './logs/access.log',
+    httpRequest: false  // Disable automatic logging
+});
+
+// Manual middleware for request logging
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const responseTime = Date.now() - start;
+        logger.logRequest(req, res, responseTime);
+    });
+    next();
+});
+```
+
+Example outputs remain the same for both modes:
+```
+// Info level output:
+[2024-03-21 14:30:45.123] info: GET /api/users 200 150ms
+
+// Debug level output:
+[2024-03-21 14:30:45.123] debug: Request Details: {
+  "method": "GET",
+  "url": "/api/users",
+  "status": 200,
+  "responseTime": "150ms",
+  "userAgent": "Mozilla/5.0...",
+  "ip": "127.0.0.1"
+}
+```
 
 ### Log Rotation Example
 
@@ -102,7 +168,7 @@ try {
 
 ## License
 
-This project is licensed under the MIT License .
+This project is licensed under the MIT License.
 
 ## Contributing
 
