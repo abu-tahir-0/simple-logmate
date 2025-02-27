@@ -3,6 +3,13 @@
     "version": "3.0.0",
     "description": "A flexible and powerful logging utility for Node.js applications.",
     "main": "index.js",
+    "types": "index.d.ts",
+    "files": [
+        "index.js",
+        "index.d.ts",
+        "src/*.js",
+        "src/*.d.ts"
+    ],
     "scripts": {
         "test": "node examples/example.js"
     },

@@ -111,12 +111,8 @@ class Logger {
             // Process all arguments to create a complete message
             const processedMessage = args.map(arg => {
                 if (arg instanceof Error) {
-                    const errorDetails = {
-                        name: arg.name,
-                        message: arg.message,
-                        stack: arg.stack
-                    };
-                    return `${errorDetails.name}: ${errorDetails.message}\n${errorDetails.stack}`;
+                    // Return error message and stack trace together
+                    return `${arg.name}: ${arg.message}\n${arg.stack}`;
                 }
                 return String(arg);
             }).join(' ');
@@ -134,16 +130,7 @@ class Logger {
                     const consoleMethod = level === 'error' ? 'error' :
                         level === 'warn' ? 'warn' : 'log';
 
-                    // Log the formatted message first
                     console[consoleMethod](colors[level] + formattedMessage + colors.reset);
-
-                    // If there are any error objects, log them separately to preserve stack traces
-                    args.forEach(arg => {
-                        if (arg instanceof Error) {
-                            console[consoleMethod](colors[level] + 'Stack trace:' + colors.reset);
-                            console[consoleMethod](arg);
-                        }
-                    });
                 } else if (transport === 'file' && this.filePath) {
                     this.logToFile(formattedMessage);
                 }
@@ -171,11 +158,17 @@ class Logger {
         try {
             while (this.logQueue.length > 0) {
                 const message = this.logQueue.shift();
+                // Add error handling for file access
+                if (!this.filePath) {
+                    throw new Error('File path not configured for file transport');
+                }
                 await fs.promises.appendFile(this.filePath, message + '\n');
                 await this.checkFileSize();
             }
         } catch (error) {
             console.error('Error writing to log file:', error);
+            // Re-add failed message back to queue
+            if (message) this.logQueue.unshift(message);
         } finally {
             this.isWriting = false;
         }
@@ -215,20 +208,26 @@ class Logger {
      * @param {number} responseTime - Response time in milliseconds
      */
     logRequest(req, res, responseTime) {
+        // Add validation for required properties
+        if (!req || !res) {
+            this.warn('Invalid request or response objects provided to logRequest');
+            return;
+        }
+
         const requestLog = {
-            method: req.method,
-            url: req.url,
-            status: res.statusCode,
+            method: req.method || 'UNKNOWN',
+            url: req.url || 'UNKNOWN',
+            status: res.statusCode || 0,
             responseTime: `${responseTime}ms`,
-            userAgent: req.headers['user-agent'],
-            ip: req.ip || req.connection.remoteAddress
+            userAgent: req.headers?.['user-agent'] || 'UNKNOWN',
+            ip: req.ip || req.connection?.remoteAddress || 'UNKNOWN'
         };
 
-        const message = `${requestLog.method} ${requestLog.url} ${requestLog.status} ${requestLog.responseTime}`;
-        this.info(message);
-
-        // Log detailed request info at debug level
-        this.debug('Request Details:', JSON.stringify(requestLog, null, 2));
+        // Log the main request info using the same format as other logs
+        this.info(`${requestLog.method} ${requestLog.url} ${requestLog.status} ${requestLog.responseTime}`);
+        
+        // Log detailed request info as debug
+        this.debug('Request Details:\n' + JSON.stringify(requestLog, null, 2));
     }
 
     // Convenience methods for different log levels
